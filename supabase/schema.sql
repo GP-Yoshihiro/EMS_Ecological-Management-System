@@ -27,8 +27,19 @@ create table if not exists creatures (
 
 create index if not exists creatures_tank_id_idx on creatures(tank_id);
 
+create table if not exists creature_logs (
+  id uuid primary key default gen_random_uuid(),
+  creature_id uuid not null references creatures(id) on delete cascade,
+  date date not null,
+  note text not null default '',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists creature_logs_creature_id_idx on creature_logs(creature_id);
+
 alter table tanks enable row level security;
 alter table creatures enable row level security;
+alter table creature_logs enable row level security;
 
 -- 個人利用・未認証(anon key)前提の暫定ポリシー。
 -- 本アプリを公開URLへデプロイする場合は、認証(Supabase Auth)を追加し
@@ -39,4 +50,8 @@ create policy "Allow all for anon (personal use)" on tanks
 
 drop policy if exists "Allow all for anon (personal use)" on creatures;
 create policy "Allow all for anon (personal use)" on creatures
+  for all using (true) with check (true);
+
+drop policy if exists "Allow all for anon (personal use)" on creature_logs;
+create policy "Allow all for anon (personal use)" on creature_logs
   for all using (true) with check (true);
