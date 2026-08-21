@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { getMonthGrid, getWeekdayLabels } from "@/lib/calendar";
-import { getMockScheduleEvents } from "@/lib/mock-schedule";
+import { useScheduleEvents } from "@/lib/use-schedule-events";
 import type { ScheduleEvent, ScheduleEventType } from "@/types/schedule";
 
 const EVENT_STYLES: Record<ScheduleEventType, { label: string; dot: string; badge: string }> = {
@@ -36,10 +37,7 @@ export default function MonthCalendar() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const grid = useMemo(() => getMonthGrid(cursor.year, cursor.month), [cursor]);
-  const events = useMemo(
-    () => getMockScheduleEvents(cursor.year, cursor.month),
-    [cursor]
-  );
+  const { events, loading } = useScheduleEvents(cursor.year, cursor.month);
   const eventsByDate = useMemo(() => groupEventsByDate(events), [events]);
   const weekdays = getWeekdayLabels();
 
@@ -83,6 +81,23 @@ export default function MonthCalendar() {
           </span>
         ))}
       </div>
+
+      {loading && (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">読み込み中...</p>
+      )}
+      {!loading && events.length === 0 && (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          給餌日・清掃日を表示するには、まず{" "}
+          <Link href="/tanks" className="underline">
+            水槽/ケージ
+          </Link>{" "}
+          と{" "}
+          <Link href="/creatures" className="underline">
+            生態
+          </Link>{" "}
+          を登録してください。
+        </p>
+      )}
 
       <div className="grid grid-cols-7 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
         {weekdays.map((weekday) => (
