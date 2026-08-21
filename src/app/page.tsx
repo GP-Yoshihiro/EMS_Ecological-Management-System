@@ -4,22 +4,27 @@ const FEATURES = [
   {
     title: "水槽・ケージ管理",
     description: "サイズ、水量、レイアウト情報を登録・管理します。",
+    href: "/tanks",
   },
   {
     title: "生態管理",
     description: "種、個体、導入日、健康メモを記録します。",
+    href: "/creatures",
   },
   {
     title: "カレンダー",
     description: "給餌日・清掃日をアプリ内カレンダーで確認します。",
+    href: "/calendar",
   },
   {
     title: "自動スケジューリング",
-    description: "水槽サイズ・水量から清掃日を自動算出します。",
+    description: "水槽サイズ・水量から清掃日を自動算出します。(準備中)",
+    href: null,
   },
   {
     title: "AI健康管理",
-    description: "生態・水槽データから健康状態を分析します。",
+    description: "生態・水槽データから健康状態を分析します。(準備中)",
+    href: null,
   },
 ];
 
@@ -43,19 +48,31 @@ export default function Home() {
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2">
-          {FEATURES.map((feature) => (
-            <div
-              key={feature.title}
-              className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950"
-            >
-              <h2 className="text-lg font-medium text-zinc-950 dark:text-zinc-50">
-                {feature.title}
-              </h2>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {feature.description}
-              </p>
-            </div>
-          ))}
+          {FEATURES.map((feature) => {
+            const cardClassName =
+              "rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950" +
+              (feature.href ? " hover:border-zinc-400 dark:hover:border-zinc-600" : " opacity-70");
+            const content = (
+              <>
+                <h2 className="text-lg font-medium text-zinc-950 dark:text-zinc-50">
+                  {feature.title}
+                </h2>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  {feature.description}
+                </p>
+              </>
+            );
+
+            return feature.href ? (
+              <Link key={feature.title} href={feature.href} className={cardClassName}>
+                {content}
+              </Link>
+            ) : (
+              <div key={feature.title} className={cardClassName}>
+                {content}
+              </div>
+            );
+          })}
         </section>
       </main>
     </div>
