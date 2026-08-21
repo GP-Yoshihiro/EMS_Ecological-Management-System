@@ -7,7 +7,7 @@
 - [x] 3. VSCodeフォルダの追加
 - [x] 4. CLAUDE.mdの追加
 - [x] 5. 基盤システムの作成(Next.js + TypeScript + Tailwind CSSの雛形構築、PWA対応)
-- [ ] 6. カレンダーの作成、同期(給餌日・清掃日を表示するカレンダーUI、外部カレンダー連携)
+- [x] 6. カレンダーの作成(給餌日・清掃日を表示するアプリ内カレンダーUI。外部カレンダー連携は不要のため対象外)
 - [ ] 7. ユーザーが追加する情報(レイアウト情報、生態情報)の定義・保存
 - [ ] 8. データベースとの接続・同期・更新
 - [ ] 9. 現段階でアプリケーションとしての起動、テスト確認
@@ -36,4 +36,13 @@
 - PWA対応として `public/manifest.json`・`public/sw.js`(Service Worker)・`public/icons/icon.svg` を追加し、`src/app/layout.tsx` にmanifest/theme-colorを設定、`src/components/ServiceWorkerRegister.tsx` で登録
 - トップページ(`src/app/page.tsx`)を主要機能5項目を紹介する内容に置き換え
 - `npm run build`(Lint + 型チェック + ビルド)、ローカルdevサーバーでの表示確認、manifest/Service Worker登録の動作確認まで完了
-- ブランチ: `feature/step5-foundation`(未マージ、PRはユーザー承認後にマージ予定)
+- ブランチ: `feature/step5-foundation`(ユーザー承認のうえmainにローカルマージ済み)
+
+## ステップ6 完了メモ(2026-08-21)
+
+- 月表示のアプリ内カレンダー(`/calendar`)を実装。前月・次月移動、日付選択で給餌・清掃の予定一覧を表示
+- 型定義 `src/types/schedule.ts`、月グリッド生成 `src/lib/calendar.ts`、サンプルデータ生成 `src/lib/mock-schedule.ts` を追加
+- 生態・水槽データの登録・保存機能(ステップ7)およびDB接続(ステップ8)が未実装のため、現段階はモックデータで表示。実データ実装後に `mock-schedule.ts` を実データ取得に置き換える
+- 外部カレンダー連携は決定事項により対象外
+- `npm run build`(Lint + 型チェック + ビルド)、devサーバーでの表示・月送り・日付選択の動作確認済み
+- ブランチ: `feature/step6-calendar`(未マージ、PRはユーザー承認後にマージ予定)
