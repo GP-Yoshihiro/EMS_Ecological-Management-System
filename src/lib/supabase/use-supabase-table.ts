@@ -8,8 +8,9 @@ interface UseSupabaseTableOptions {
 }
 
 /**
- * Supabaseの1テーブルをリアルタイム同期するための汎用フック。
- * 別タブ・別端末での変更も postgres_changes 経由で反映される。
+ * Supabaseの1テーブルを読み書きするための汎用フック。
+ * 個人利用(単一ユーザー)前提のため、サーバーからの取得は初回マウント時のみ行い、
+ * 追加/更新/削除の直後はローカルのitemsを直接更新する(楽観的更新)。
  */
 export function useSupabaseTable<T extends { id: string }>(
   table: string,
@@ -37,22 +38,11 @@ export function useSupabaseTable<T extends { id: string }>(
   }, [table, orderBy]);
 
   useEffect(() => {
-    // Supabase(外部システム)からの初回データ取得 + リアルタイム変更購読という
+    // Supabase(外部システム)からの初回データ取得という
     // useEffectの正当な用途のため、set-state-in-effectのルールを無効化する。
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refetch();
-
-    const channel = supabase
-      .channel(`${table}-changes`)
-      .on("postgres_changes", { event: "*", schema: "public", table }, () => {
-        refetch();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [refetch, table]);
+  }, [refetch]);
 
   const upsert = useCallback(
     async (item: T) => {
@@ -61,9 +51,15 @@ export function useSupabaseTable<T extends { id: string }>(
         setError(upsertError.message);
         return;
       }
-      await refetch();
+      setError(null);
+      setItems((prev) => {
+        const exists = prev.some((existing) => existing.id === item.id);
+        return exists
+          ? prev.map((existing) => (existing.id === item.id ? item : existing))
+          : [...prev, item];
+      });
     },
-    [table, refetch]
+    [table]
   );
 
   const remove = useCallback(
@@ -73,9 +69,10 @@ export function useSupabaseTable<T extends { id: string }>(
         setError(deleteError.message);
         return;
       }
-      await refetch();
+      setError(null);
+      setItems((prev) => prev.filter((existing) => existing.id !== id));
     },
-    [table, refetch]
+    [table]
   );
 
   return { items, loading, error, upsert, remove, refetch };

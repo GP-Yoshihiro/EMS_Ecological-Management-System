@@ -9,7 +9,7 @@
 - [x] 5. 基盤システムの作成(Next.js + TypeScript + Tailwind CSSの雛形構築、PWA対応)
 - [x] 6. カレンダーの作成(給餌日・清掃日を表示するアプリ内カレンダーUI。外部カレンダー連携は不要のため対象外)
 - [x] 7. ユーザーが追加する情報(レイアウト情報、生態情報)の定義・保存(暫定でlocalStorageに保存。DB接続はステップ8)
-- [ ] 8. データベースとの接続・同期・更新(実装完了、Supabaseプロジェクト作成待ちのためユーザー環境での動作確認が未完了)
+- [x] 8. データベースとの接続・同期・更新(Supabase接続。ユーザー環境で実データの読み書きを確認済み)
 - [ ] 9. 現段階でアプリケーションとしての起動、テスト確認
 - [ ] 10. 自動スケジューリングシステムの追加実装(水槽/ケージのサイズ・水量から清掃日を自動算出)
 - [ ] 11. 生態、水槽内の情報から健康管理AIを搭載実装
@@ -58,14 +58,18 @@
 - `npm run build`(Lint + 型チェック + ビルド)に加え、本番モード(`npm start`)でも実際にブラウザから水槽・生態の追加/編集/削除・画面間の連携(生態→所属水槽の反映)を確認
 - ブランチ: `feature/step7-data-entry`(ユーザー承認のうえmainにローカルマージ済み)
 
-## ステップ8 実装メモ(2026-08-21、動作確認は未完了)
+## ステップ8 完了メモ(2026-08-21)
 
 - データベース方針をSupabase(PostgreSQL)に確定(ユーザー承認済み)
 - `supabase/schema.sql` にtanks/creaturesテーブルとRLSポリシー(個人利用・anon key前提の暫定ポリシー)を定義
 - `src/lib/supabase/client.ts` でSupabaseクライアントを作成(環境変数未設定時はエラーで即失敗する設計)
-- `src/lib/supabase/use-supabase-table.ts` を汎用フックとして実装。postgres_changesのリアルタイム購読により複数タブ/端末間の同期に対応
+- `src/lib/supabase/use-supabase-table.ts` を汎用フックとして実装。初回マウント時にサーバーから取得し、追加/更新/削除の直後はローカルのitemsを直接更新する(楽観的更新)方式を採用
 - `src/lib/supabase/tanks.ts`・`creatures.ts` でDB行(snake_case)とアプリ側の型(camelCase)を変換するアダプタを実装し、`TankManager`・`CreatureManager`をlocalStorage版からSupabase版に置き換え
 - 不要になった `src/lib/use-local-collection.ts`・`src/lib/storage-keys.ts` を削除
 - `.env.local.example` を追加、READMEにSupabaseセットアップ手順を追記
-- **未完了**: Claude側からはSupabaseのアカウント作成・認証情報の入力はできないため、ユーザーがSupabaseプロジェクトを作成し、`supabase/schema.sql`を実行、`.env.local`を設定する必要がある。設定完了後、実際のDB読み書き・リアルタイム同期の動作確認を行うこと
-- ブランチ: `feature/step8-database`(未マージ、動作確認・ユーザー承認後にマージ予定)
+- ユーザーがSupabaseプロジェクトを作成・`supabase/schema.sql`実行・`.env.local`設定を実施。設定完了後、実際のブラウザから水槽/生態の追加・編集・削除、画面間連携(生態→所属水槽)を確認
+- 開発中に発見した不具合と対応:
+  - Project URLに`/rest/v1/`が誤って付与されていたことによる接続エラーをユーザーとともに特定・修正
+  - 当初実装していた`postgres_changes`のリアルタイム購読が、書き込み直後の再取得を不安定にする要因になっていたため撤去し、書き込み成功後はローカル状態を直接更新する方式に変更して安定性を確保(個人利用のみのため複数端末間リアルタイム同期は現状不要と判断)
+  - devモードのFast Refreshが進行中のリクエストを中断し表示が停止する現象を確認。本番ビルド(`npm start`)でのクリーンな検証により、通常利用では問題ないことを確認
+- ブランチ: `feature/step8-database`(未マージ、ユーザー承認後にマージ予定)
