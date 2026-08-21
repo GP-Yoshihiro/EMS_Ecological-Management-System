@@ -59,6 +59,6 @@ export function useTanks() {
     loading,
     error,
     upsertTank: (tank: Tank) => upsert(toRow(tank)),
-    removeTank: remove,
+    removeTank: (id: string) => remove(id),
   };
 }

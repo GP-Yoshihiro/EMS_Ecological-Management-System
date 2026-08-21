@@ -43,7 +43,7 @@ export default function CreatureManager() {
     setForm(emptyForm);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const speciesName = form.speciesName.trim();
     if (!speciesName) return;
@@ -61,8 +61,10 @@ export default function CreatureManager() {
         : new Date().toISOString(),
     };
 
-    upsertCreature(creature);
-    resetForm();
+    const success = await upsertCreature(creature);
+    if (success) {
+      resetForm();
+    }
   };
 
   const tankName = (tankId: string | null) =>
