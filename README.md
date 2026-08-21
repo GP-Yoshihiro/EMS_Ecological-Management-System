@@ -20,7 +20,7 @@ npm install
 npm run dev
 ```
 
-(基盤システム構築後に有効化される想定。現時点では雛形未構築。)
+`http://localhost:3000` で起動します。PWA対応(manifest / Service Worker)済み。
 
 ## GitHubリポジトリへの接続方法
 
