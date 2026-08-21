@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useCreatures } from "@/lib/supabase/creatures";
 import { useTanks } from "@/lib/supabase/tanks";
+import CreatureLogSection from "./CreatureLogSection";
 import {
   CREATURE_CATEGORY_LABELS,
   type Creature,
@@ -196,42 +197,45 @@ export default function CreatureManager() {
           {creatures.map((creature) => (
             <li
               key={creature.id}
-              className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between"
+              className="flex flex-col rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
             >
-              <div>
-                <p className="font-medium text-zinc-950 dark:text-zinc-50">
-                  {creature.speciesName}
-                  {creature.individualName && `(${creature.individualName})`}
-                  <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-                    {CREATURE_CATEGORY_LABELS[creature.category]}
-                  </span>
-                </p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {creature.introducedAt && `導入日: ${creature.introducedAt} / `}
-                  所属: {tankName(creature.tankId)}
-                </p>
-                {creature.notes && (
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-                    {creature.notes}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-medium text-zinc-950 dark:text-zinc-50">
+                    {creature.speciesName}
+                    {creature.individualName && `(${creature.individualName})`}
+                    <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                      {CREATURE_CATEGORY_LABELS[creature.category]}
+                    </span>
                   </p>
-                )}
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {creature.introducedAt && `導入日: ${creature.introducedAt} / `}
+                    所属: {tankName(creature.tankId)}
+                  </p>
+                  {creature.notes && (
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+                      {creature.notes}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(creature)}
+                    className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                  >
+                    編集
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeCreature(creature.id)}
+                    className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                  >
+                    削除
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => startEdit(creature)}
-                  className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
-                >
-                  編集
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removeCreature(creature.id)}
-                  className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-                >
-                  削除
-                </button>
-              </div>
+              <CreatureLogSection creatureId={creature.id} />
             </li>
           ))}
         </ul>

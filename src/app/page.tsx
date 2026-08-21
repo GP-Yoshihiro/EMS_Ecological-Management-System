@@ -18,13 +18,13 @@ const FEATURES = [
   },
   {
     title: "自動スケジューリング",
-    description: "水槽サイズ・水量から清掃日を自動算出します。(準備中)",
-    href: null,
+    description: "水槽サイズ・水量・生体数から清掃日を自動算出し、カレンダーに反映します。",
+    href: "/calendar",
   },
   {
-    title: "AI健康管理",
-    description: "生態・水槽データから健康状態を分析します。(準備中)",
-    href: null,
+    title: "健康管理",
+    description: "体調記録・飼育密度から、生態の健康状態の目安をルールベースで分析します。",
+    href: "/health",
   },
 ];
 
