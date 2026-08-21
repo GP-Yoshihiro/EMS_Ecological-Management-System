@@ -41,17 +41,22 @@ alter table tanks enable row level security;
 alter table creatures enable row level security;
 alter table creature_logs enable row level security;
 
--- 個人利用・未認証(anon key)前提の暫定ポリシー。
--- 本アプリを公開URLへデプロイする場合は、認証(Supabase Auth)を追加し
--- auth.uid() に基づくポリシーへ差し替えること。
+-- ログイン済み(Supabase Authで認証済み)ユーザーのみアクセス可能とするポリシー。
+-- 個人利用(単一ユーザー)前提のため、行ごとの所有者チェックは行わず、
+-- 「ログインしているかどうか」のみで許可/拒否する。
+-- ユーザーアカウントはSupabaseダッシュボードの Authentication > Users から
+-- 直接作成すること(アプリ内に公開のサインアップ画面は設けていない)。
 drop policy if exists "Allow all for anon (personal use)" on tanks;
-create policy "Allow all for anon (personal use)" on tanks
-  for all using (true) with check (true);
+drop policy if exists "Allow authenticated users only" on tanks;
+create policy "Allow authenticated users only" on tanks
+  for all using (auth.uid() is not null) with check (auth.uid() is not null);
 
 drop policy if exists "Allow all for anon (personal use)" on creatures;
-create policy "Allow all for anon (personal use)" on creatures
-  for all using (true) with check (true);
+drop policy if exists "Allow authenticated users only" on creatures;
+create policy "Allow authenticated users only" on creatures
+  for all using (auth.uid() is not null) with check (auth.uid() is not null);
 
 drop policy if exists "Allow all for anon (personal use)" on creature_logs;
-create policy "Allow all for anon (personal use)" on creature_logs
-  for all using (true) with check (true);
+drop policy if exists "Allow authenticated users only" on creature_logs;
+create policy "Allow authenticated users only" on creature_logs
+  for all using (auth.uid() is not null) with check (auth.uid() is not null);
