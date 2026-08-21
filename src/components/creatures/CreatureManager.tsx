@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useLocalCollection } from "@/lib/use-local-collection";
-import { STORAGE_KEYS } from "@/lib/storage-keys";
+import { useCreatures } from "@/lib/supabase/creatures";
+import { useTanks } from "@/lib/supabase/tanks";
 import {
   CREATURE_CATEGORY_LABELS,
   type Creature,
   type CreatureCategory,
 } from "@/types/creature";
-import type { Tank } from "@/types/tank";
 
 const CATEGORIES = Object.keys(CREATURE_CATEGORY_LABELS) as CreatureCategory[];
 
@@ -22,10 +21,8 @@ const emptyForm = {
 };
 
 export default function CreatureManager() {
-  const { items: creatures, upsert, remove } = useLocalCollection<Creature>(
-    STORAGE_KEYS.creatures
-  );
-  const { items: tanks } = useLocalCollection<Tank>(STORAGE_KEYS.tanks);
+  const { creatures, loading, error, upsertCreature, removeCreature } = useCreatures();
+  const { tanks } = useTanks();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -64,7 +61,7 @@ export default function CreatureManager() {
         : new Date().toISOString(),
     };
 
-    upsert(creature);
+    upsertCreature(creature);
     resetForm();
   };
 
@@ -180,7 +177,15 @@ export default function CreatureManager() {
         <h2 className="text-lg font-medium text-zinc-950 dark:text-zinc-50">
           登録済みの生態({creatures.length})
         </h2>
-        {creatures.length === 0 && (
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            データの取得/更新に失敗しました: {error}
+          </p>
+        )}
+        {loading && creatures.length === 0 && (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">読み込み中...</p>
+        )}
+        {!loading && creatures.length === 0 && (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             まだ登録がありません。上のフォームから追加してください。
           </p>
@@ -219,7 +224,7 @@ export default function CreatureManager() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => remove(creature.id)}
+                  onClick={() => removeCreature(creature.id)}
                   className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
                 >
                   削除

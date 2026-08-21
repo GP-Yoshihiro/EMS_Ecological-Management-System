@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useLocalCollection } from "@/lib/use-local-collection";
-import { STORAGE_KEYS } from "@/lib/storage-keys";
+import { useTanks } from "@/lib/supabase/tanks";
 import {
   TANK_CATEGORY_LABELS,
   type Tank,
@@ -23,9 +22,7 @@ const emptyForm = {
 };
 
 export default function TankManager() {
-  const { items: tanks, upsert, remove } = useLocalCollection<Tank>(
-    STORAGE_KEYS.tanks
-  );
+  const { tanks, loading, error, upsertTank, removeTank } = useTanks();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -68,7 +65,7 @@ export default function TankManager() {
         : new Date().toISOString(),
     };
 
-    upsert(tank);
+    upsertTank(tank);
     resetForm();
   };
 
@@ -199,7 +196,15 @@ export default function TankManager() {
         <h2 className="text-lg font-medium text-zinc-950 dark:text-zinc-50">
           登録済みの水槽/ケージ({tanks.length})
         </h2>
-        {tanks.length === 0 && (
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            データの取得/更新に失敗しました: {error}
+          </p>
+        )}
+        {loading && tanks.length === 0 && (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">読み込み中...</p>
+        )}
+        {!loading && tanks.length === 0 && (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             まだ登録がありません。上のフォームから追加してください。
           </p>
@@ -237,7 +242,7 @@ export default function TankManager() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => remove(tank.id)}
+                  onClick={() => removeTank(tank.id)}
                   className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
                 >
                   削除
