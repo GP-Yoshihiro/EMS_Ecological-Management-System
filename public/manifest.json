@@ -1,0 +1,17 @@
+{
+  "name": "AquaLife Manager",
+  "short_name": "AquaLife",
+  "description": "水槽・ケージと飼育生態を一元管理するアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
