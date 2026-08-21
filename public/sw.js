@@ -1,4 +1,4 @@
-const CACHE_NAME = "aqualife-cache-v1";
+const CACHE_NAME = "aqualife-cache-v2";
 const OFFLINE_URLS = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -23,6 +23,13 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // 同一オリジン(アプリ本体・静的アセット)のみキャッシュ対象とする。
+  // Supabase等の外部APIへのリクエストをキャッシュすると、更新・削除後も
+  // 古いレスポンスを返し続けてしまうため、常にネットワークへ委ねる。
+  if (new URL(event.request.url).origin !== self.location.origin) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

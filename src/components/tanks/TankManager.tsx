@@ -45,7 +45,7 @@ export default function TankManager() {
     setForm(emptyForm);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = form.name.trim();
     if (!name) return;
@@ -65,8 +65,10 @@ export default function TankManager() {
         : new Date().toISOString(),
     };
 
-    upsertTank(tank);
-    resetForm();
+    const success = await upsertTank(tank);
+    if (success) {
+      resetForm();
+    }
   };
 
   return (

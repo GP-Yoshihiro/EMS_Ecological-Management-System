@@ -45,11 +45,11 @@ export function useSupabaseTable<T extends { id: string }>(
   }, [refetch]);
 
   const upsert = useCallback(
-    async (item: T) => {
+    async (item: T): Promise<boolean> => {
       const { error: upsertError } = await supabase.from(table).upsert(item);
       if (upsertError) {
         setError(upsertError.message);
-        return;
+        return false;
       }
       setError(null);
       setItems((prev) => {
@@ -58,19 +58,21 @@ export function useSupabaseTable<T extends { id: string }>(
           ? prev.map((existing) => (existing.id === item.id ? item : existing))
           : [...prev, item];
       });
+      return true;
     },
     [table]
   );
 
   const remove = useCallback(
-    async (id: string) => {
+    async (id: string): Promise<boolean> => {
       const { error: deleteError } = await supabase.from(table).delete().eq("id", id);
       if (deleteError) {
         setError(deleteError.message);
-        return;
+        return false;
       }
       setError(null);
       setItems((prev) => prev.filter((existing) => existing.id !== id));
+      return true;
     },
     [table]
   );
