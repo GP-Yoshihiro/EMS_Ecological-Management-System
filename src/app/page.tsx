@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const FEATURES = [
   {
     title: "水槽・ケージ管理",
@@ -32,6 +34,12 @@ export default function Home() {
           <p className="text-base text-zinc-600 dark:text-zinc-400">
             飼育している生態と水槽/ケージの情報を一元管理するアプリです。
           </p>
+          <Link
+            href="/calendar"
+            className="mt-2 inline-flex w-fit items-center gap-1 rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+          >
+            カレンダーを見る
+          </Link>
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2">
