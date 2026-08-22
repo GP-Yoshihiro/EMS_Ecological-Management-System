@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useSupabaseTable } from "./use-supabase-table";
-import type { Tank, TankCategory } from "@/types/tank";
+import type { Tank, TankCategory, LightType } from "@/types/tank";
 import type { CareScheduleUnit } from "@/types/care-schedule";
 
 interface TankRow {
@@ -19,7 +19,24 @@ interface TankRow {
   cleaning_schedule_count: number | null;
   cleaning_schedule_unit: CareScheduleUnit;
   cleaning_schedule_weekdays: number[];
+  ambient_temperature_c: number | null;
+  humidity_percent: number | null;
+  water_temperature_c: number | null;
+  light_types: LightType[];
+  light_start_time: string | null;
+  light_end_time: string | null;
+  heater_enabled: boolean;
+  heater_start_time: string | null;
+  heater_end_time: string | null;
+  fan_enabled: boolean;
+  fan_start_time: string | null;
+  fan_end_time: string | null;
   created_at: string;
+}
+
+/** Postgresの time 型("HH:MM:SS")をフォーム/表示用の"HH:MM"に揃える */
+function toHm(value: string | null): string | null {
+  return value ? value.slice(0, 5) : null;
 }
 
 function toTank(row: TankRow): Tank {
@@ -39,6 +56,18 @@ function toTank(row: TankRow): Tank {
       unit: row.cleaning_schedule_unit,
       weekdays: row.cleaning_schedule_weekdays,
     },
+    ambientTemperatureC: row.ambient_temperature_c,
+    humidityPercent: row.humidity_percent,
+    waterTemperatureC: row.water_temperature_c,
+    lightTypes: row.light_types,
+    lightStartTime: toHm(row.light_start_time),
+    lightEndTime: toHm(row.light_end_time),
+    heaterEnabled: row.heater_enabled,
+    heaterStartTime: toHm(row.heater_start_time),
+    heaterEndTime: toHm(row.heater_end_time),
+    fanEnabled: row.fan_enabled,
+    fanStartTime: toHm(row.fan_start_time),
+    fanEndTime: toHm(row.fan_end_time),
     createdAt: row.created_at,
   };
 }
@@ -58,6 +87,18 @@ function toRow(tank: Tank): TankRow {
     cleaning_schedule_count: tank.cleaningSchedule.count,
     cleaning_schedule_unit: tank.cleaningSchedule.unit,
     cleaning_schedule_weekdays: tank.cleaningSchedule.weekdays,
+    ambient_temperature_c: tank.ambientTemperatureC,
+    humidity_percent: tank.humidityPercent,
+    water_temperature_c: tank.waterTemperatureC,
+    light_types: tank.lightTypes,
+    light_start_time: tank.lightStartTime,
+    light_end_time: tank.lightEndTime,
+    heater_enabled: tank.heaterEnabled,
+    heater_start_time: tank.heaterStartTime,
+    heater_end_time: tank.heaterEndTime,
+    fan_enabled: tank.fanEnabled,
+    fan_start_time: tank.fanStartTime,
+    fan_end_time: tank.fanEndTime,
     created_at: tank.createdAt,
   };
 }

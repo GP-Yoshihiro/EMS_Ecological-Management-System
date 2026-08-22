@@ -9,6 +9,14 @@ export const TANK_CATEGORY_LABELS: Record<TankCategory, string> = {
   other: "その他",
 };
 
+export type LightType = "led" | "uv" | "infrared";
+
+export const LIGHT_TYPE_LABELS: Record<LightType, string> = {
+  led: "LED",
+  uv: "紫外線",
+  infrared: "赤外線",
+};
+
 export interface Tank {
   id: string;
   name: string;
@@ -24,5 +32,23 @@ export interface Tank {
   sortOrder: number;
   /** 清掃スケジュールの手動設定(未設定の場合は自動算出) */
   cleaningSchedule: CareSchedule;
+  /** 気温(℃、任意) */
+  ambientTemperatureC: number | null;
+  /** 湿度(%、任意) */
+  humidityPercent: number | null;
+  /** 水温(℃、任意) */
+  waterTemperatureC: number | null;
+  /** 使用しているライトの種類(複数選択可) */
+  lightTypes: LightType[];
+  /** ライト使用時間帯の開始時刻(24時間表記 "HH:MM"、任意) */
+  lightStartTime: string | null;
+  /** ライト使用時間帯の終了時刻(24時間表記 "HH:MM"、任意) */
+  lightEndTime: string | null;
+  heaterEnabled: boolean;
+  heaterStartTime: string | null;
+  heaterEndTime: string | null;
+  fanEnabled: boolean;
+  fanStartTime: string | null;
+  fanEndTime: string | null;
   createdAt: string;
 }
