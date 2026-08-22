@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { PREFECTURES } from "@/lib/prefectures";
-import { weatherLabel } from "@/lib/weather-codes";
+import { weatherLabel, weatherIconKind } from "@/lib/weather-codes";
+import WeatherIcon from "./WeatherIcon";
 
 const STORAGE_KEY = "aqualife:selected-prefecture";
 const DEFAULT_PREFECTURE = "東京都";
@@ -93,6 +94,7 @@ export default function WeatherWidget() {
       {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       {!loading && !error && weather && (
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+          <WeatherIcon kind={weatherIconKind(weather.weatherCode)} />
           <span>{weatherLabel(weather.weatherCode)}</span>
           <span>気温 {weather.temperatureC.toFixed(1)}℃</span>
           <span>湿度 {weather.humidityPercent}%</span>

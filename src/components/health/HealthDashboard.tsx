@@ -9,6 +9,7 @@ import { useFeedingRecords } from "@/lib/supabase/feeding-records";
 import { useCleaningRecords } from "@/lib/supabase/cleaning-records";
 import { assessCreatureHealth, type HealthStatus } from "@/lib/health-analysis";
 import { CREATURE_CATEGORY_LABELS } from "@/types/creature";
+import StatusFace from "@/components/common/StatusFace";
 
 const STATUS_STYLES: Record<HealthStatus, { label: string; badge: string }> = {
   good: {
@@ -93,13 +94,16 @@ export default function HealthDashboard() {
           className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
         >
           <div className="flex items-center justify-between gap-2">
-            <p className="font-medium text-zinc-950 dark:text-zinc-50">
-              {creature.speciesName}
-              {creature.individualName && `(${creature.individualName})`}
-              <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-                {CREATURE_CATEGORY_LABELS[creature.category]}
-              </span>
-            </p>
+            <div className="flex items-center gap-3">
+              <StatusFace status={assessment.status} size={40} showLabel={false} />
+              <p className="font-medium text-zinc-950 dark:text-zinc-50">
+                {creature.speciesName}
+                {creature.individualName && `(${creature.individualName})`}
+                <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                  {CREATURE_CATEGORY_LABELS[creature.category]}
+                </span>
+              </p>
+            </div>
             <span
               className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[assessment.status].badge}`}
             >

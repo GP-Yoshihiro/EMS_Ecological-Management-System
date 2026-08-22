@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { getMonthGrid, getWeekdayLabels } from "@/lib/calendar";
+import { getMonthGrid, getWeekdayLabels, toIsoDate } from "@/lib/calendar";
 import { useScheduleEvents } from "@/lib/use-schedule-events";
 import { useTanks } from "@/lib/supabase/tanks";
 import { useCreatures } from "@/lib/supabase/creatures";
+import { useTankEnvironmentRecords } from "@/lib/supabase/tank-environment-records";
+import { formatOneDecimal } from "@/lib/decimal";
 import type { ScheduleEvent, ScheduleEventType } from "@/types/schedule";
 import type { FeedingRecord, CleaningRecord } from "@/types/care-record";
 
@@ -55,6 +57,7 @@ export default function MonthCalendar() {
   } = useScheduleEvents(cursor.year, cursor.month);
   const { tanks } = useTanks();
   const { creatures } = useCreatures();
+  const { records: environmentRecords } = useTankEnvironmentRecords();
   const eventsByDate = useMemo(() => groupEventsByDate(events), [events]);
   const weekdays = getWeekdayLabels();
 
@@ -149,6 +152,14 @@ export default function MonthCalendar() {
   const selectedEvents = selectedDate ? eventsByDate.get(selectedDate) ?? [] : [];
   const addOptions = addType === "feeding" ? creatures : tanks;
 
+  const todaysEnvironmentRecords = selectedDate
+    ? environmentRecords
+        .filter((record) => toIsoDate(new Date(record.recordedAt)) === selectedDate)
+        .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))
+    : [];
+  const environmentTankName = (tankId: string) =>
+    tanks.find((tank) => tank.id === tankId)?.name ?? "(削除済みの水槽/ケージ)";
+
   const predictedRecordIds = new Set(
     selectedEvents.map((event) => findRecord(event)?.id).filter((id): id is string => !!id)
   );
@@ -165,6 +176,15 @@ export default function MonthCalendar() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <Link
+          href="/environment-records/new"
+          className="rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+        >
+          環境記録を追加
+        </Link>
+      </div>
+
       <div className="flex items-center justify-between">
         <button
           type="button"
@@ -341,6 +361,31 @@ export default function MonthCalendar() {
                       取消
                     </button>
                   </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {selectedDate && todaysEnvironmentRecords.length > 0 && (
+          <div className="mt-4 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">今日の記録</p>
+            <ul className="mt-2 flex flex-col gap-2">
+              {todaysEnvironmentRecords.map((record) => (
+                <li key={record.id} className="text-sm text-zinc-700 dark:text-zinc-300">
+                  <span className="font-medium">
+                    {new Date(record.recordedAt).toLocaleTimeString("ja-JP", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>{" "}
+                  {environmentTankName(record.tankId)} / 気温
+                  {record.ambientTemperatureC !== null ? formatOneDecimal(record.ambientTemperatureC) : "-"}
+                  ℃ / 湿度
+                  {record.humidityPercent !== null ? formatOneDecimal(record.humidityPercent) : "-"}
+                  % / 水温
+                  {record.waterTemperatureC !== null ? formatOneDecimal(record.waterTemperatureC) : "-"}
+                  ℃ / 綺麗度{record.cleanlinessPercent}%
                 </li>
               ))}
             </ul>
