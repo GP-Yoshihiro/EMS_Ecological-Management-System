@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTanks } from "@/lib/supabase/tanks";
+import SortFilterControls from "@/components/common/SortFilterControls";
+import CareScheduleFields from "@/components/common/CareScheduleFields";
+import { sortItems, type SortDirection, type SortMode } from "@/lib/sort";
+import { moveItem } from "@/lib/reorder";
 import {
   TANK_CATEGORY_LABELS,
   type Tank,
   type TankCategory,
 } from "@/types/tank";
+import { DEFAULT_CARE_SCHEDULE, type CareScheduleUnit } from "@/types/care-schedule";
 
 const CATEGORIES = Object.keys(TANK_CATEGORY_LABELS) as TankCategory[];
 
@@ -19,12 +24,30 @@ const emptyForm = {
   volumeLiters: "",
   location: "",
   layoutNotes: "",
+  cleaningScheduleCount: "",
+  cleaningScheduleUnit: DEFAULT_CARE_SCHEDULE.unit,
+  cleaningScheduleWeekdays: [] as number[],
 };
 
 export default function TankManager() {
   const { tanks, loading, error, upsertTank, removeTank } = useTanks();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [sortMode, setSortMode] = useState<SortMode>("kana");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [draftOrder, setDraftOrder] = useState<Tank[] | null>(null);
+  const draggedIndexRef = useRef<number | null>(null);
+
+  const canReorder = sortMode === "original" && sortDirection === "asc" && categoryFilter === "all";
+
+  const sortedTanks = useMemo(() => {
+    const filtered =
+      categoryFilter === "all" ? tanks : tanks.filter((tank) => tank.category === categoryFilter);
+    return sortItems(filtered, sortMode, sortDirection, (tank) => tank.name, (tank) => tank.sortOrder);
+  }, [tanks, sortMode, sortDirection, categoryFilter]);
+
+  const displayedTanks = draftOrder ?? sortedTanks;
 
   const startEdit = (tank: Tank) => {
     setEditingId(tank.id);
@@ -37,6 +60,10 @@ export default function TankManager() {
       volumeLiters: String(tank.volumeLiters),
       location: tank.location,
       layoutNotes: tank.layoutNotes,
+      cleaningScheduleCount:
+        tank.cleaningSchedule.count === null ? "" : String(tank.cleaningSchedule.count),
+      cleaningScheduleUnit: tank.cleaningSchedule.unit,
+      cleaningScheduleWeekdays: tank.cleaningSchedule.weekdays,
     });
   };
 
@@ -50,6 +77,10 @@ export default function TankManager() {
     const name = form.name.trim();
     if (!name) return;
 
+    const existing = editingId ? tanks.find((t) => t.id === editingId) : undefined;
+    const nextSortOrder =
+      existing?.sortOrder ?? (tanks.length === 0 ? 0 : Math.max(...tanks.map((t) => t.sortOrder)) + 1);
+
     const tank: Tank = {
       id: editingId ?? crypto.randomUUID(),
       name,
@@ -60,15 +91,48 @@ export default function TankManager() {
       volumeLiters: Number(form.volumeLiters) || 0,
       location: form.location.trim(),
       layoutNotes: form.layoutNotes.trim(),
-      createdAt: editingId
-        ? tanks.find((t) => t.id === editingId)?.createdAt ?? new Date().toISOString()
-        : new Date().toISOString(),
+      sortOrder: nextSortOrder,
+      cleaningSchedule: {
+        count: form.cleaningScheduleCount ? Number(form.cleaningScheduleCount) : null,
+        unit: form.cleaningScheduleUnit,
+        weekdays: form.cleaningScheduleWeekdays,
+      },
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
     };
 
     const success = await upsertTank(tank);
     if (success) {
       resetForm();
     }
+  };
+
+  const handleDragStart = (index: number) => () => {
+    draggedIndexRef.current = index;
+    setDraftOrder(sortedTanks);
+  };
+
+  const handleDragOver = (index: number) => (event: React.DragEvent) => {
+    event.preventDefault();
+    const from = draggedIndexRef.current;
+    if (from === null || from === index) return;
+    setDraftOrder((prev) => {
+      if (!prev) return prev;
+      const next = moveItem(prev, from, index);
+      draggedIndexRef.current = index;
+      return next;
+    });
+  };
+
+  const handleDragEnd = async () => {
+    if (draftOrder) {
+      await Promise.all(
+        draftOrder.map((tank, index) =>
+          tank.sortOrder === index ? Promise.resolve(true) : upsertTank({ ...tank, sortOrder: index })
+        )
+      );
+    }
+    setDraftOrder(null);
+    draggedIndexRef.current = null;
   };
 
   return (
@@ -173,6 +237,18 @@ export default function TankManager() {
               className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
             />
           </label>
+
+          <CareScheduleFields
+            label="清掃"
+            count={form.cleaningScheduleCount}
+            unit={form.cleaningScheduleUnit}
+            weekdays={form.cleaningScheduleWeekdays}
+            onCountChange={(value) => setForm((f) => ({ ...f, cleaningScheduleCount: value }))}
+            onUnitChange={(value: CareScheduleUnit) =>
+              setForm((f) => ({ ...f, cleaningScheduleUnit: value }))
+            }
+            onWeekdaysChange={(value) => setForm((f) => ({ ...f, cleaningScheduleWeekdays: value }))}
+          />
         </div>
 
         <div className="flex gap-2">
@@ -211,28 +287,63 @@ export default function TankManager() {
             まだ登録がありません。上のフォームから追加してください。
           </p>
         )}
+        {tanks.length > 0 && (
+          <SortFilterControls
+            sortMode={sortMode}
+            onSortModeChange={setSortMode}
+            sortDirection={sortDirection}
+            onSortDirectionChange={setSortDirection}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            categoryOptions={CATEGORIES.map((category) => ({
+              value: category,
+              label: TANK_CATEGORY_LABELS[category],
+            }))}
+          />
+        )}
+        {tanks.length > 0 && displayedTanks.length === 0 && (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            該当する水槽/ケージがありません。
+          </p>
+        )}
         <ul className="flex flex-col gap-3">
-          {tanks.map((tank) => (
+          {displayedTanks.map((tank, index) => (
             <li
               key={tank.id}
-              className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between"
+              draggable={canReorder}
+              onDragStart={handleDragStart(index)}
+              onDragOver={handleDragOver(index)}
+              onDragEnd={handleDragEnd}
+              className={`flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 sm:flex-row sm:items-start sm:justify-between ${
+                canReorder ? "cursor-grab active:cursor-grabbing" : ""
+              }`}
             >
-              <div>
-                <p className="font-medium text-zinc-950 dark:text-zinc-50">
-                  {tank.name}
-                  <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-                    {TANK_CATEGORY_LABELS[tank.category]}
+              <div className="flex gap-2">
+                {canReorder && (
+                  <span
+                    className="mt-0.5 shrink-0 select-none text-zinc-400 dark:text-zinc-600"
+                    aria-hidden
+                  >
+                    ⠿
                   </span>
-                </p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {tank.widthCm}×{tank.depthCm}×{tank.heightCm}cm / {tank.volumeLiters}L
-                  {tank.location && ` / ${tank.location}`}
-                </p>
-                {tank.layoutNotes && (
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-                    {tank.layoutNotes}
-                  </p>
                 )}
+                <div>
+                  <p className="font-medium text-zinc-950 dark:text-zinc-50">
+                    {tank.name}
+                    <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                      {TANK_CATEGORY_LABELS[tank.category]}
+                    </span>
+                  </p>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {tank.widthCm}×{tank.depthCm}×{tank.heightCm}cm / {tank.volumeLiters}L
+                    {tank.location && ` / ${tank.location}`}
+                  </p>
+                  {tank.layoutNotes && (
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+                      {tank.layoutNotes}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
