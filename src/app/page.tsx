@@ -13,12 +13,7 @@ const FEATURES = [
   },
   {
     title: "カレンダー",
-    description: "給餌日・清掃日をアプリ内カレンダーで確認します。",
-    href: "/calendar",
-  },
-  {
-    title: "自動スケジューリング",
-    description: "水槽サイズ・水量・生体数から清掃日を自動算出し、カレンダーに反映します。",
+    description: "給餌日・清掃日を確認します。日程は水槽サイズ・水量・生体数などから自動算出されます。",
     href: "/calendar",
   },
   {
@@ -48,31 +43,20 @@ export default function Home() {
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2">
-          {FEATURES.map((feature) => {
-            const cardClassName =
-              "rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950" +
-              (feature.href ? " hover:border-zinc-400 dark:hover:border-zinc-600" : " opacity-70");
-            const content = (
-              <>
-                <h2 className="text-lg font-medium text-zinc-950 dark:text-zinc-50">
-                  {feature.title}
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {feature.description}
-                </p>
-              </>
-            );
-
-            return feature.href ? (
-              <Link key={feature.title} href={feature.href} className={cardClassName}>
-                {content}
-              </Link>
-            ) : (
-              <div key={feature.title} className={cardClassName}>
-                {content}
-              </div>
-            );
-          })}
+          {FEATURES.map((feature) => (
+            <Link
+              key={feature.title}
+              href={feature.href}
+              className="rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-600"
+            >
+              <h2 className="text-lg font-medium text-zinc-950 dark:text-zinc-50">
+                {feature.title}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                {feature.description}
+              </p>
+            </Link>
+          ))}
         </section>
       </main>
     </div>

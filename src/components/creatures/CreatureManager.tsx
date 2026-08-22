@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useCreatures } from "@/lib/supabase/creatures";
 import { useTanks } from "@/lib/supabase/tanks";
 import CreatureLogSection from "./CreatureLogSection";
+import SortFilterControls from "@/components/common/SortFilterControls";
+import CareScheduleFields from "@/components/common/CareScheduleFields";
+import { sortItems, type SortDirection, type SortMode } from "@/lib/sort";
+import { moveItem } from "@/lib/reorder";
 import {
   CREATURE_CATEGORY_LABELS,
   type Creature,
   type CreatureCategory,
 } from "@/types/creature";
+import { DEFAULT_CARE_SCHEDULE, type CareScheduleUnit } from "@/types/care-schedule";
 
 const CATEGORIES = Object.keys(CREATURE_CATEGORY_LABELS) as CreatureCategory[];
 
@@ -19,6 +24,9 @@ const emptyForm = {
   introducedAt: "",
   tankId: "",
   notes: "",
+  feedingScheduleCount: "",
+  feedingScheduleUnit: DEFAULT_CARE_SCHEDULE.unit,
+  feedingScheduleWeekdays: [] as number[],
 };
 
 export default function CreatureManager() {
@@ -26,6 +34,29 @@ export default function CreatureManager() {
   const { tanks } = useTanks();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [sortMode, setSortMode] = useState<SortMode>("kana");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [draftOrder, setDraftOrder] = useState<Creature[] | null>(null);
+  const draggedIndexRef = useRef<number | null>(null);
+
+  const canReorder = sortMode === "original" && sortDirection === "asc" && categoryFilter === "all";
+
+  const sortedCreatures = useMemo(() => {
+    const filtered =
+      categoryFilter === "all"
+        ? creatures
+        : creatures.filter((creature) => creature.category === categoryFilter);
+    return sortItems(
+      filtered,
+      sortMode,
+      sortDirection,
+      (creature) => creature.speciesName,
+      (creature) => creature.sortOrder
+    );
+  }, [creatures, sortMode, sortDirection, categoryFilter]);
+
+  const displayedCreatures = draftOrder ?? sortedCreatures;
 
   const startEdit = (creature: Creature) => {
     setEditingId(creature.id);
@@ -36,6 +67,10 @@ export default function CreatureManager() {
       introducedAt: creature.introducedAt,
       tankId: creature.tankId ?? "",
       notes: creature.notes,
+      feedingScheduleCount:
+        creature.feedingSchedule.count === null ? "" : String(creature.feedingSchedule.count),
+      feedingScheduleUnit: creature.feedingSchedule.unit,
+      feedingScheduleWeekdays: creature.feedingSchedule.weekdays,
     });
   };
 
@@ -49,6 +84,11 @@ export default function CreatureManager() {
     const speciesName = form.speciesName.trim();
     if (!speciesName) return;
 
+    const existing = editingId ? creatures.find((c) => c.id === editingId) : undefined;
+    const nextSortOrder =
+      existing?.sortOrder ??
+      (creatures.length === 0 ? 0 : Math.max(...creatures.map((c) => c.sortOrder)) + 1);
+
     const creature: Creature = {
       id: editingId ?? crypto.randomUUID(),
       category: form.category,
@@ -57,9 +97,13 @@ export default function CreatureManager() {
       introducedAt: form.introducedAt,
       tankId: form.tankId || null,
       notes: form.notes.trim(),
-      createdAt: editingId
-        ? creatures.find((c) => c.id === editingId)?.createdAt ?? new Date().toISOString()
-        : new Date().toISOString(),
+      sortOrder: nextSortOrder,
+      feedingSchedule: {
+        count: form.feedingScheduleCount ? Number(form.feedingScheduleCount) : null,
+        unit: form.feedingScheduleUnit,
+        weekdays: form.feedingScheduleWeekdays,
+      },
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
     };
 
     const success = await upsertCreature(creature);
@@ -70,6 +114,37 @@ export default function CreatureManager() {
 
   const tankName = (tankId: string | null) =>
     tanks.find((tank) => tank.id === tankId)?.name ?? "未割り当て";
+
+  const handleDragStart = (index: number) => () => {
+    draggedIndexRef.current = index;
+    setDraftOrder(sortedCreatures);
+  };
+
+  const handleDragOver = (index: number) => (event: React.DragEvent) => {
+    event.preventDefault();
+    const from = draggedIndexRef.current;
+    if (from === null || from === index) return;
+    setDraftOrder((prev) => {
+      if (!prev) return prev;
+      const next = moveItem(prev, from, index);
+      draggedIndexRef.current = index;
+      return next;
+    });
+  };
+
+  const handleDragEnd = async () => {
+    if (draftOrder) {
+      await Promise.all(
+        draftOrder.map((creature, index) =>
+          creature.sortOrder === index
+            ? Promise.resolve(true)
+            : upsertCreature({ ...creature, sortOrder: index })
+        )
+      );
+    }
+    setDraftOrder(null);
+    draggedIndexRef.current = null;
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -146,6 +221,18 @@ export default function CreatureManager() {
             </select>
           </label>
 
+          <CareScheduleFields
+            label="給餌"
+            count={form.feedingScheduleCount}
+            unit={form.feedingScheduleUnit}
+            weekdays={form.feedingScheduleWeekdays}
+            onCountChange={(value) => setForm((f) => ({ ...f, feedingScheduleCount: value }))}
+            onUnitChange={(value: CareScheduleUnit) =>
+              setForm((f) => ({ ...f, feedingScheduleUnit: value }))
+            }
+            onWeekdaysChange={(value) => setForm((f) => ({ ...f, feedingScheduleWeekdays: value }))}
+          />
+
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">
             特記事項・成長記録・体調メモ
             <textarea
@@ -193,30 +280,63 @@ export default function CreatureManager() {
             まだ登録がありません。上のフォームから追加してください。
           </p>
         )}
+        {creatures.length > 0 && (
+          <SortFilterControls
+            sortMode={sortMode}
+            onSortModeChange={setSortMode}
+            sortDirection={sortDirection}
+            onSortDirectionChange={setSortDirection}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            categoryOptions={CATEGORIES.map((category) => ({
+              value: category,
+              label: CREATURE_CATEGORY_LABELS[category],
+            }))}
+          />
+        )}
+        {creatures.length > 0 && displayedCreatures.length === 0 && (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">該当する生態がありません。</p>
+        )}
         <ul className="flex flex-col gap-3">
-          {creatures.map((creature) => (
+          {displayedCreatures.map((creature, index) => (
             <li
               key={creature.id}
-              className="flex flex-col rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+              draggable={canReorder}
+              onDragStart={handleDragStart(index)}
+              onDragOver={handleDragOver(index)}
+              onDragEnd={handleDragEnd}
+              className={`flex flex-col rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 ${
+                canReorder ? "cursor-grab active:cursor-grabbing" : ""
+              }`}
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="font-medium text-zinc-950 dark:text-zinc-50">
-                    {creature.speciesName}
-                    {creature.individualName && `(${creature.individualName})`}
-                    <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
-                      {CREATURE_CATEGORY_LABELS[creature.category]}
+                <div className="flex gap-2">
+                  {canReorder && (
+                    <span
+                      className="mt-0.5 shrink-0 select-none text-zinc-400 dark:text-zinc-600"
+                      aria-hidden
+                    >
+                      ⠿
                     </span>
-                  </p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {creature.introducedAt && `導入日: ${creature.introducedAt} / `}
-                    所属: {tankName(creature.tankId)}
-                  </p>
-                  {creature.notes && (
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-                      {creature.notes}
-                    </p>
                   )}
+                  <div>
+                    <p className="font-medium text-zinc-950 dark:text-zinc-50">
+                      {creature.speciesName}
+                      {creature.individualName && `(${creature.individualName})`}
+                      <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                        {CREATURE_CATEGORY_LABELS[creature.category]}
+                      </span>
+                    </p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {creature.introducedAt && `導入日: ${creature.introducedAt} / `}
+                      所属: {tankName(creature.tankId)}
+                    </p>
+                    {creature.notes && (
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+                        {creature.notes}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button

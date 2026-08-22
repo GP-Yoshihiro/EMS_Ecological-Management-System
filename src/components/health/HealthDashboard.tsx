@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useTanks } from "@/lib/supabase/tanks";
 import { useCreatures } from "@/lib/supabase/creatures";
 import { useCreatureLogs } from "@/lib/supabase/creature-logs";
+import { useFeedingRecords } from "@/lib/supabase/feeding-records";
+import { useCleaningRecords } from "@/lib/supabase/cleaning-records";
 import { assessCreatureHealth, type HealthStatus } from "@/lib/health-analysis";
 import { CREATURE_CATEGORY_LABELS } from "@/types/creature";
 
@@ -29,8 +31,11 @@ export default function HealthDashboard() {
   const { tanks, loading: tanksLoading } = useTanks();
   const { creatures, loading: creaturesLoading } = useCreatures();
   const { logs, loading: logsLoading } = useCreatureLogs();
+  const { records: feedingRecords, loading: feedingLoading } = useFeedingRecords();
+  const { records: cleaningRecords, loading: cleaningLoading } = useCleaningRecords();
 
-  const loading = tanksLoading || creaturesLoading || logsLoading;
+  const loading =
+    tanksLoading || creaturesLoading || logsLoading || feedingLoading || cleaningLoading;
 
   const assessments = useMemo(() => {
     return creatures
@@ -40,14 +45,29 @@ export default function HealthDashboard() {
           (candidate) => candidate.tankId === creature.tankId
         ).length;
         const creatureLogs = logs.filter((log) => log.creatureId === creature.id);
-        const assessment = assessCreatureHealth(creature, creatureLogs, tank, tankCreatureCount);
+        const feedingRecordDates = feedingRecords
+          .filter((record) => record.creatureId === creature.id)
+          .map((record) => record.date);
+        const cleaningRecordDates = tank
+          ? cleaningRecords
+              .filter((record) => record.tankId === tank.id)
+              .map((record) => record.date)
+          : [];
+        const assessment = assessCreatureHealth({
+          creature,
+          logs: creatureLogs,
+          tank,
+          tankCreatureCount,
+          feedingRecordDates,
+          cleaningRecordDates,
+        });
         return { creature, tank, assessment };
       })
       .sort(
         (a, b) =>
           STATUS_ORDER.indexOf(a.assessment.status) - STATUS_ORDER.indexOf(b.assessment.status)
       );
-  }, [creatures, tanks, logs]);
+  }, [creatures, tanks, logs, feedingRecords, cleaningRecords]);
 
   if (loading) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">読み込み中...</p>;

@@ -1,3 +1,5 @@
+import type { CareSchedule } from "./care-schedule";
+
 export type CreatureCategory = "fish" | "reptile" | "insect" | "other";
 
 export const CREATURE_CATEGORY_LABELS: Record<CreatureCategory, string> = {
@@ -20,5 +22,9 @@ export interface Creature {
   tankId: string | null;
   /** 特記事項・成長記録・体調メモ */
   notes: string;
+  /** 「オリジナル」並び替え用の手動順序(小さいほど先) */
+  sortOrder: number;
+  /** 給餌スケジュールの手動設定(未設定の場合は自動算出) */
+  feedingSchedule: CareSchedule;
   createdAt: string;
 }
