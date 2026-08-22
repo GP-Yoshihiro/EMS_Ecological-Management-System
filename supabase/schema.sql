@@ -43,6 +43,16 @@ alter table tanks drop constraint if exists tanks_light_types_check;
 alter table tanks add constraint tanks_light_types_check
   check (light_types <@ array['led', 'uv', 'infrared']::text[]);
 
+-- 水槽/ケージの形状(種別とは別の任意項目。一覧・詳細のイラスト表示に使用)。
+alter table tanks add column if not exists shape text;
+alter table tanks drop constraint if exists tanks_shape_check;
+alter table tanks add constraint tanks_shape_check
+  check (shape is null or shape in (
+    'cube_aquarium', 'high_aquarium', 'low_aquarium',
+    'reptile_cage_horizontal', 'reptile_cage_vertical', 'reptile_acrylic_cage',
+    'insect_cage'
+  ));
+
 create table if not exists creatures (
   id uuid primary key default gen_random_uuid(),
   category text not null check (category in ('fish', 'reptile', 'insect', 'other')),
@@ -118,11 +128,26 @@ create table if not exists cleaning_records (
 
 create index if not exists cleaning_records_tank_id_idx on cleaning_records(tank_id);
 
+-- 水槽内の環境記録(気温・湿度・水温・綺麗度)。記録時刻を含めて保存する。
+create table if not exists tank_environment_records (
+  id uuid primary key default gen_random_uuid(),
+  tank_id uuid not null references tanks(id) on delete cascade,
+  recorded_at timestamptz not null default now(),
+  ambient_temperature_c numeric,
+  humidity_percent numeric,
+  water_temperature_c numeric,
+  cleanliness_percent numeric not null check (cleanliness_percent >= 0 and cleanliness_percent <= 100),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists tank_environment_records_tank_id_idx on tank_environment_records(tank_id);
+
 alter table tanks enable row level security;
 alter table creatures enable row level security;
 alter table creature_logs enable row level security;
 alter table feeding_records enable row level security;
 alter table cleaning_records enable row level security;
+alter table tank_environment_records enable row level security;
 
 -- ログイン済み(Supabase Authで認証済み)ユーザーのみアクセス可能とするポリシー。
 -- 個人利用(単一ユーザー)前提のため、行ごとの所有者チェックは行わず、
@@ -150,4 +175,8 @@ create policy "Allow authenticated users only" on feeding_records
 
 drop policy if exists "Allow authenticated users only" on cleaning_records;
 create policy "Allow authenticated users only" on cleaning_records
+  for all using (auth.uid() is not null) with check (auth.uid() is not null);
+
+drop policy if exists "Allow authenticated users only" on tank_environment_records;
+create policy "Allow authenticated users only" on tank_environment_records
   for all using (auth.uid() is not null) with check (auth.uid() is not null);

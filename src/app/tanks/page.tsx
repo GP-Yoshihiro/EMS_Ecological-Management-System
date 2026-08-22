@@ -1,5 +1,5 @@
 import Link from "next/link";
-import TankManager from "@/components/tanks/TankManager";
+import TankList from "@/components/tanks/TankList";
 
 export const metadata = {
   title: "水槽・ケージ管理 | AquaLife Manager",
@@ -21,7 +21,7 @@ export default function TanksPage() {
           </p>
         </div>
 
-        <TankManager />
+        <TankList />
       </main>
     </div>
   );

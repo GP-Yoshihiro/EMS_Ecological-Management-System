@@ -1,4 +1,4 @@
-const CACHE_NAME = "aqualife-cache-v2";
+const CACHE_NAME = "aqualife-cache-v3";
 const OFFLINE_URLS = ["/", "/manifest.json"];
 
 self.addEventListener("install", (event) => {

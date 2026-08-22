@@ -1,5 +1,5 @@
 import Link from "next/link";
-import CreatureManager from "@/components/creatures/CreatureManager";
+import CreatureList from "@/components/creatures/CreatureList";
 
 export const metadata = {
   title: "生態管理 | AquaLife Manager",
@@ -17,11 +17,11 @@ export default function CreaturesPage() {
             生態管理
           </h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            種、個体、導入日、所属する水槽/ケージ、特記事項を登録・編集します。
+            種、個体、導入日、健康メモを登録・編集します。
           </p>
         </div>
 
-        <CreatureManager />
+        <CreatureList />
       </main>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useSupabaseTable } from "./use-supabase-table";
-import type { Tank, TankCategory, LightType } from "@/types/tank";
+import type { Tank, TankCategory, LightType, TankShape } from "@/types/tank";
 import type { CareScheduleUnit } from "@/types/care-schedule";
 
 interface TankRow {
@@ -15,6 +15,7 @@ interface TankRow {
   volume_liters: number;
   location: string;
   layout_notes: string;
+  shape: TankShape | null;
   sort_order: number;
   cleaning_schedule_count: number | null;
   cleaning_schedule_unit: CareScheduleUnit;
@@ -50,6 +51,7 @@ function toTank(row: TankRow): Tank {
     volumeLiters: row.volume_liters,
     location: row.location,
     layoutNotes: row.layout_notes,
+    shape: row.shape,
     sortOrder: row.sort_order,
     cleaningSchedule: {
       count: row.cleaning_schedule_count,
@@ -83,6 +85,7 @@ function toRow(tank: Tank): TankRow {
     volume_liters: tank.volumeLiters,
     location: tank.location,
     layout_notes: tank.layoutNotes,
+    shape: tank.shape,
     sort_order: tank.sortOrder,
     cleaning_schedule_count: tank.cleaningSchedule.count,
     cleaning_schedule_unit: tank.cleaningSchedule.unit,

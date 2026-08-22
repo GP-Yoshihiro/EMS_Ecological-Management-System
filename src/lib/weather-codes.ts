@@ -33,3 +33,20 @@ const WEATHER_CODE_LABELS: Record<number, string> = {
 export function weatherLabel(code: number): string {
   return WEATHER_CODE_LABELS[code] ?? "不明";
 }
+
+export type WeatherIconKind = "sunny" | "cloudy" | "rain" | "heavy-rain" | "snow";
+
+const SUNNY_CODES = new Set([0, 1]);
+const SNOW_CODES = new Set([71, 73, 75, 77, 85, 86]);
+/** 雷雨・雹を伴う雨・強い雨は「大雨」アイコンにまとめる */
+const HEAVY_RAIN_CODES = new Set([65, 67, 82, 95, 96, 99]);
+const RAIN_CODES = new Set([51, 53, 55, 56, 57, 61, 63, 66, 80, 81]);
+
+/** WMO天気コードを、イラスト表示用の5種類(晴れ・曇り・雨・大雨・雪)に分類する */
+export function weatherIconKind(code: number): WeatherIconKind {
+  if (SUNNY_CODES.has(code)) return "sunny";
+  if (SNOW_CODES.has(code)) return "snow";
+  if (HEAVY_RAIN_CODES.has(code)) return "heavy-rain";
+  if (RAIN_CODES.has(code)) return "rain";
+  return "cloudy";
+}
