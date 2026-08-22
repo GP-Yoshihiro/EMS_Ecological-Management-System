@@ -1,4 +1,5 @@
 import Link from "next/link";
+import WeatherWidget from "@/components/home/WeatherWidget";
 
 const FEATURES = [
   {
@@ -41,6 +42,8 @@ export default function Home() {
             カレンダーを見る
           </Link>
         </header>
+
+        <WeatherWidget />
 
         <section className="grid gap-4 sm:grid-cols-2">
           {FEATURES.map((feature) => (

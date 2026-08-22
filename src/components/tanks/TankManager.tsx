@@ -4,16 +4,52 @@ import { useMemo, useRef, useState } from "react";
 import { useTanks } from "@/lib/supabase/tanks";
 import SortFilterControls from "@/components/common/SortFilterControls";
 import CareScheduleFields from "@/components/common/CareScheduleFields";
+import TimedEquipmentFields from "@/components/common/TimedEquipmentFields";
+import LightFields from "@/components/common/LightFields";
 import { sortItems, type SortDirection, type SortMode } from "@/lib/sort";
 import { moveItem } from "@/lib/reorder";
 import {
   TANK_CATEGORY_LABELS,
+  LIGHT_TYPE_LABELS,
   type Tank,
   type TankCategory,
+  type LightType,
 } from "@/types/tank";
 import { DEFAULT_CARE_SCHEDULE, type CareScheduleUnit } from "@/types/care-schedule";
+import { truncateToOneDecimal, formatOneDecimal } from "@/lib/decimal";
 
 const CATEGORIES = Object.keys(TANK_CATEGORY_LABELS) as TankCategory[];
+
+function environmentSummary(tank: Tank): string[] {
+  const items: string[] = [];
+  if (tank.ambientTemperatureC !== null)
+    items.push(`気温${formatOneDecimal(tank.ambientTemperatureC)}℃`);
+  if (tank.humidityPercent !== null)
+    items.push(`湿度${formatOneDecimal(tank.humidityPercent)}%`);
+  if (tank.waterTemperatureC !== null)
+    items.push(`水温${formatOneDecimal(tank.waterTemperatureC)}℃`);
+  if (tank.lightTypes.length > 0) {
+    const types = tank.lightTypes.map((type) => LIGHT_TYPE_LABELS[type]).join("・");
+    const time =
+      tank.lightStartTime && tank.lightEndTime
+        ? `${tank.lightStartTime}〜${tank.lightEndTime}`
+        : "";
+    items.push(`ライト: ${types}${time ? `(${time})` : ""}`);
+  }
+  if (tank.heaterEnabled) {
+    const time =
+      tank.heaterStartTime && tank.heaterEndTime
+        ? `(${tank.heaterStartTime}〜${tank.heaterEndTime})`
+        : "";
+    items.push(`ヒーター${time}`);
+  }
+  if (tank.fanEnabled) {
+    const time =
+      tank.fanStartTime && tank.fanEndTime ? `(${tank.fanStartTime}〜${tank.fanEndTime})` : "";
+    items.push(`ファン${time}`);
+  }
+  return items;
+}
 
 const emptyForm = {
   name: "",
@@ -27,6 +63,18 @@ const emptyForm = {
   cleaningScheduleCount: "",
   cleaningScheduleUnit: DEFAULT_CARE_SCHEDULE.unit,
   cleaningScheduleWeekdays: [] as number[],
+  ambientTemperatureC: "",
+  humidityPercent: "",
+  waterTemperatureC: "",
+  lightTypes: [] as LightType[],
+  lightStartTime: "",
+  lightEndTime: "",
+  heaterEnabled: false,
+  heaterStartTime: "",
+  heaterEndTime: "",
+  fanEnabled: false,
+  fanStartTime: "",
+  fanEndTime: "",
 };
 
 export default function TankManager() {
@@ -64,6 +112,20 @@ export default function TankManager() {
         tank.cleaningSchedule.count === null ? "" : String(tank.cleaningSchedule.count),
       cleaningScheduleUnit: tank.cleaningSchedule.unit,
       cleaningScheduleWeekdays: tank.cleaningSchedule.weekdays,
+      ambientTemperatureC:
+        tank.ambientTemperatureC === null ? "" : String(tank.ambientTemperatureC),
+      humidityPercent: tank.humidityPercent === null ? "" : String(tank.humidityPercent),
+      waterTemperatureC:
+        tank.waterTemperatureC === null ? "" : String(tank.waterTemperatureC),
+      lightTypes: tank.lightTypes,
+      lightStartTime: tank.lightStartTime ?? "",
+      lightEndTime: tank.lightEndTime ?? "",
+      heaterEnabled: tank.heaterEnabled,
+      heaterStartTime: tank.heaterStartTime ?? "",
+      heaterEndTime: tank.heaterEndTime ?? "",
+      fanEnabled: tank.fanEnabled,
+      fanStartTime: tank.fanStartTime ?? "",
+      fanEndTime: tank.fanEndTime ?? "",
     });
   };
 
@@ -85,10 +147,10 @@ export default function TankManager() {
       id: editingId ?? crypto.randomUUID(),
       name,
       category: form.category,
-      widthCm: Number(form.widthCm) || 0,
-      depthCm: Number(form.depthCm) || 0,
-      heightCm: Number(form.heightCm) || 0,
-      volumeLiters: Number(form.volumeLiters) || 0,
+      widthCm: truncateToOneDecimal(Number(form.widthCm) || 0),
+      depthCm: truncateToOneDecimal(Number(form.depthCm) || 0),
+      heightCm: truncateToOneDecimal(Number(form.heightCm) || 0),
+      volumeLiters: truncateToOneDecimal(Number(form.volumeLiters) || 0),
       location: form.location.trim(),
       layoutNotes: form.layoutNotes.trim(),
       sortOrder: nextSortOrder,
@@ -97,6 +159,24 @@ export default function TankManager() {
         unit: form.cleaningScheduleUnit,
         weekdays: form.cleaningScheduleWeekdays,
       },
+      ambientTemperatureC: form.ambientTemperatureC
+        ? truncateToOneDecimal(Number(form.ambientTemperatureC))
+        : null,
+      humidityPercent: form.humidityPercent
+        ? truncateToOneDecimal(Number(form.humidityPercent))
+        : null,
+      waterTemperatureC: form.waterTemperatureC
+        ? truncateToOneDecimal(Number(form.waterTemperatureC))
+        : null,
+      lightTypes: form.lightTypes,
+      lightStartTime: form.lightTypes.length > 0 && form.lightStartTime ? form.lightStartTime : null,
+      lightEndTime: form.lightTypes.length > 0 && form.lightEndTime ? form.lightEndTime : null,
+      heaterEnabled: form.heaterEnabled,
+      heaterStartTime: form.heaterEnabled && form.heaterStartTime ? form.heaterStartTime : null,
+      heaterEndTime: form.heaterEnabled && form.heaterEndTime ? form.heaterEndTime : null,
+      fanEnabled: form.fanEnabled,
+      fanStartTime: form.fanEnabled && form.fanStartTime ? form.fanStartTime : null,
+      fanEndTime: form.fanEnabled && form.fanEndTime ? form.fanEndTime : null,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
     };
 
@@ -179,6 +259,7 @@ export default function TankManager() {
             <input
               type="number"
               min="0"
+              step="0.1"
               value={form.widthCm}
               onChange={(e) => setForm((f) => ({ ...f, widthCm: e.target.value }))}
               className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
@@ -190,6 +271,7 @@ export default function TankManager() {
             <input
               type="number"
               min="0"
+              step="0.1"
               value={form.depthCm}
               onChange={(e) => setForm((f) => ({ ...f, depthCm: e.target.value }))}
               className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
@@ -201,6 +283,7 @@ export default function TankManager() {
             <input
               type="number"
               min="0"
+              step="0.1"
               value={form.heightCm}
               onChange={(e) => setForm((f) => ({ ...f, heightCm: e.target.value }))}
               className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
@@ -212,6 +295,7 @@ export default function TankManager() {
             <input
               type="number"
               min="0"
+              step="0.1"
               value={form.volumeLiters}
               onChange={(e) => setForm((f) => ({ ...f, volumeLiters: e.target.value }))}
               className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
@@ -237,6 +321,77 @@ export default function TankManager() {
               className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
             />
           </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            気温(℃)
+            <input
+              type="number"
+              step="0.1"
+              value={form.ambientTemperatureC}
+              onChange={(e) => setForm((f) => ({ ...f, ambientTemperatureC: e.target.value }))}
+              className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              placeholder="例: 25.0"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            湿度(%)
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              value={form.humidityPercent}
+              onChange={(e) => setForm((f) => ({ ...f, humidityPercent: e.target.value }))}
+              className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              placeholder="例: 60"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            水温(℃)
+            <input
+              type="number"
+              step="0.1"
+              value={form.waterTemperatureC}
+              onChange={(e) => setForm((f) => ({ ...f, waterTemperatureC: e.target.value }))}
+              className="rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+              placeholder="例: 26.0"
+            />
+          </label>
+
+          <div className="sm:col-span-2" />
+
+          <div className="sm:col-span-2">
+            <LightFields
+              lightTypes={form.lightTypes}
+              startTime={form.lightStartTime}
+              endTime={form.lightEndTime}
+              onLightTypesChange={(value) => setForm((f) => ({ ...f, lightTypes: value }))}
+              onStartTimeChange={(value) => setForm((f) => ({ ...f, lightStartTime: value }))}
+              onEndTimeChange={(value) => setForm((f) => ({ ...f, lightEndTime: value }))}
+            />
+          </div>
+
+          <TimedEquipmentFields
+            label="ヒーター"
+            enabled={form.heaterEnabled}
+            startTime={form.heaterStartTime}
+            endTime={form.heaterEndTime}
+            onEnabledChange={(value) => setForm((f) => ({ ...f, heaterEnabled: value }))}
+            onStartTimeChange={(value) => setForm((f) => ({ ...f, heaterStartTime: value }))}
+            onEndTimeChange={(value) => setForm((f) => ({ ...f, heaterEndTime: value }))}
+          />
+
+          <TimedEquipmentFields
+            label="ファン"
+            enabled={form.fanEnabled}
+            startTime={form.fanStartTime}
+            endTime={form.fanEndTime}
+            onEnabledChange={(value) => setForm((f) => ({ ...f, fanEnabled: value }))}
+            onStartTimeChange={(value) => setForm((f) => ({ ...f, fanStartTime: value }))}
+            onEndTimeChange={(value) => setForm((f) => ({ ...f, fanEndTime: value }))}
+          />
 
           <CareScheduleFields
             label="清掃"
@@ -335,12 +490,18 @@ export default function TankManager() {
                     </span>
                   </p>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {tank.widthCm}×{tank.depthCm}×{tank.heightCm}cm / {tank.volumeLiters}L
+                    {formatOneDecimal(tank.widthCm)}×{formatOneDecimal(tank.depthCm)}×
+                    {formatOneDecimal(tank.heightCm)}cm / {formatOneDecimal(tank.volumeLiters)}L
                     {tank.location && ` / ${tank.location}`}
                   </p>
                   {tank.layoutNotes && (
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
                       {tank.layoutNotes}
+                    </p>
+                  )}
+                  {environmentSummary(tank).length > 0 && (
+                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+                      {environmentSummary(tank).join(" / ")}
                     </p>
                   )}
                 </div>
